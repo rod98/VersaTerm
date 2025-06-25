@@ -18,7 +18,7 @@
 // -----------------------------------------------------------------------------
 
 #include "framebuf.h"
-#include "terminal.h"
+#include "terminal/terminal.h"
 #include "keyboard.h"
 #include "serial.h"
 #include "config.h"

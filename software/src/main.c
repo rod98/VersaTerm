@@ -26,7 +26,7 @@
 #include "framebuf.h"
 #include "serial.h"
 #include "keyboard.h"
-#include "terminal.h"
+#include "terminal/terminal.h"
 #include "config.h"
 #include "font.h"
 #include "pins.h"
@@ -41,19 +41,19 @@ static uint32_t __uninitialized_ram(bootsel_magic_ram)[count_of(bootsel_magic)];
 static uint16_t ignore_key = HID_KEY_NONE;
 
 
-void apply_settings()
+void apply_settings(global_state *gs)
 {
   font_apply_settings();
   framebuf_apply_settings();
   keyboard_apply_settings();
-  terminal_apply_settings();
+  terminal_apply_settings(gs);
   serial_apply_settings();
 }
 
 
 void wait(uint32_t milliseconds);
 
-void run_tasks(bool processInput)
+void run_tasks(global_state *gs, bool processInput)
 {
   // tinyusb tasks
   if( tud_inited() ) tud_task();
@@ -81,11 +81,11 @@ void run_tasks(bool processInput)
 
           if( key==HID_KEY_F12 )
             {
-              if( config_menu() ) apply_settings();
+              if( config_menu() ) apply_settings(gs);
             }
           else if( keyboard_ctrl_pressed(key) && (key&0xFF)==HID_KEY_F12 )
             {
-              if( config_load(0xFF) ) apply_settings();
+              if( config_load(0xFF) ) apply_settings(gs);
             }
           else if( key==HID_KEY_F11 )
             keyboard_macro_record_startstop();
@@ -94,7 +94,7 @@ void run_tasks(bool processInput)
               uint8_t vol = config_get_audible_bell_volume();
               if( config_load((key&0xFF)-HID_KEY_F1) )
                 {
-                  apply_settings();
+                  apply_settings(gs);
                   sound_play_tone(880, 50, vol, false);
                 }
               else
@@ -105,16 +105,16 @@ void run_tasks(bool processInput)
                 }
             }
           else
-            terminal_process_key(key);
+            terminal_process_key(gs, key);
         }
     }
 }
 
 
-void wait(uint32_t milliseconds)
+void wait(global_state *gs, uint32_t milliseconds)
 {
   absolute_time_t timeout = make_timeout_time_ms(milliseconds);
-  while( get_absolute_time()<timeout ) run_tasks(false);
+  while( get_absolute_time()<timeout ) run_tasks(gs, false);
 }
 
 
@@ -169,7 +169,7 @@ int main()
   keyboard_init();
 
   // allow some time for keyboard(s) to initialize
-  wait(tuh_inited() ? 1500 : 250);
+  wait(&gs, tuh_inited() ? 1500 : 250);
   
   // if DEFAULTS button and CTRL key is pressed then force DVI
   if( !gpio_get(PIN_DEFAULTS) )
@@ -193,10 +193,10 @@ int main()
 
       framebuf_init(false);
     }
-  
-  terminal_init();
+
+  terminal_init(gs);
   sound_init();
   config_show_splash();
 
-  while( true ) run_tasks(true);
+  while( true ) run_tasks(, true);
 }

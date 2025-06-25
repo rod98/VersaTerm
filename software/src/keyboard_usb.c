@@ -29,7 +29,7 @@
 //#define DEBUG
 
 #ifdef DEBUG
-#include "terminal.h"
+#include "terminal/terminal.h"
 #include <stdarg.h>
 static void print(const char *format, ...)
 {

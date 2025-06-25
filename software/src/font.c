@@ -27,7 +27,7 @@
 #include "hardware/sync.h"
 
 #include "pins.h"
-#include "terminal.h"
+#include "terminal/terminal.h"
 #include "font.h"
 #include "flash.h"
 #include "config.h"

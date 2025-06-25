@@ -18,7 +18,7 @@
 // -----------------------------------------------------------------------------
 
 #include "flash.h"
-#include "terminal.h"
+#include "terminal/terminal.h"
 
 #include "hardware/flash.h"
 #include "hardware/sync.h"

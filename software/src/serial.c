@@ -22,7 +22,7 @@
 #include "serial_uart.h"
 #include "serial_cdc.h"
 #include "config.h"
-#include "terminal.h"
+#include "terminal/terminal.h"
 
 
 void serial_set_break(bool set)

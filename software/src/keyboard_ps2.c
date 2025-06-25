@@ -32,7 +32,7 @@
 //#define DEBUG
 
 #ifdef DEBUG
-#include "terminal.h"
+#include "terminal/terminal.h"
 #include <stdarg.h>
 // note that this only works if main.c is changed such that framebuf_init occurs before keyboard_init
 static void print(const char *format, ...)

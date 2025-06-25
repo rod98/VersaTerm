@@ -26,7 +26,7 @@
 #include "serial_cdc.h"
 #include "config.h"
 #include "pins.h"
-#include "terminal.h"
+#include "terminal/terminal.h"
 #include "config.h"
 
 #define XON  17

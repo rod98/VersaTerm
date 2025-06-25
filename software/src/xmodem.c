@@ -22,7 +22,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include "terminal.h"
+#include "terminal/terminal.h"
 #include "xmodem.h"
 
 typedef enum {

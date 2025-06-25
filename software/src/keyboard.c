@@ -37,7 +37,7 @@ void wait(uint32_t milliseconds);
 #define INFLASHFUN __in_flash(".kbdfun") 
 
 #ifdef DEBUG
-#include "terminal.h"
+#include "terminal/terminal.h"
 #include <stdarg.h>
 static void INFLASHFUN print(const char *format, ...)
 {
