@@ -4,6 +4,7 @@ add_executable(VersaTerm
         framebuf_vga.cpp
         framebuf_dvi.c
         font.c
+        terminal/terminal.c
         terminal/internal/internal.c
         terminal/vt102/vt102.c
         keyboard.c

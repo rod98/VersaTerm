@@ -19,8 +19,9 @@
 #define INFLASHFUN __in_flash(".terminalfun") 
 
 extern global_state glob_st;
+static global_state *gs = &glob_st;
 
-global_state *gs = &glob_st;
+void wait(uint32_t milliseconds);
 
 void INFLASHFUN terminal_receive_char(char c)
 {
@@ -29,44 +30,70 @@ void INFLASHFUN terminal_receive_char(char c)
   switch( config_get_terminal_type() )
     {
     case CFG_TTYPE_VT102:
-      if( !vt52_mode ) { terminal_receive_char_vt102(gs, c); break; }
+      if( !gs->vt52_mode ) { terminal_receive_char_vt102(c); break; }
 
     // case CFG_TTYPE_VT52:
-    //   terminal_receive_char_vt52(gs, c);
+    //   terminal_receive_char_vt52(c);
     //   break;
 
     // case CFG_TTYPE_PETSCII:
-    //   terminal_receive_char_petscii(gs, c);
+    //   terminal_receive_char_petscii(c);
     //   break;
     }
 }
 
 
+void INFLASHFUN terminal_process_key(uint16_t key)
+{
+  if( (key&0xFF)==HID_KEY_PAUSE )
+    {
+      if( keyboard_ctrl_pressed(key) )
+        {
+          // CTRL-Pause/Break sends answerback message
+          send_string(config_get_terminal_answerback());
+        }
+      else
+        {
+          // Pause/Break key sends BREAK condition on serial port
+          serial_set_break(true);
+          wait(MAX(1, (12000/config_get_serial_baud())));
+          serial_set_break(false);
+        }
+    }
+  else if( key==HID_KEY_F10 )
+    {
+      sound_play_tone(880, 50, config_get_audible_bell_volume(), false);
+      gs->localecho = !gs->localecho;
+    }
+//   else if( config_get_terminal_type()==2 )
+//     terminal_process_key_petscii(key);
+//   else
+//     terminal_process_key_vt(key);
+}
+
 
 void INFLASHFUN terminal_receive_string(const char* str)
 {
-  while( *str ) { terminal_receive_char(gs, *str); str++; }
+  while( *str ) { terminal_receive_char(*str); str++; }
 }
 
-void INFLASHFUN terminal_process_key(uint16_t key);
+// void INFLASHFUN terminal_process_key(uint16_t key) {
+//     internal_terminal_process_key(key);
+// }
 
 void INFLASHFUN terminal_clear_screen()
 {
-  framebuf_fill_screen(' ', gs->color_fg, gs->color_bg);
-  init_cursor(gs, 0, 0);
-  scroll_region_start = 0;
-  scroll_region_end = framebuf_get_nrows()-1;
-  origin_mode = false;
+    internal_terminal_clear_screen();
 }
 
 void INFLASHFUN terminal_init() {
-    internal_terminal_init(gs);
+    internal_terminal_init();
 }
 
 void INFLASHFUN terminal_apply_settings() {
-    internal_terminal_init(gs);
+    internal_terminal_init();
 }
 
 void INFLASHFUN terminal_reset() {
-    internal_terminal_reset(gs);
+    internal_terminal_reset();
 }

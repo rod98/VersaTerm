@@ -15,31 +15,71 @@
 
 #define INFLASHFUN __in_flash(".terminalfun") 
 
-global_state create_global_state(void) {
-    global_state term_state = (global_state) {
-        .terminal_state = TS_NORMAL,
-        .attr = 0,
-        .cur_attr = 0,
-        .cursor_col = 0,
-        .cursor_row = 0,
-        .saved_col = 0, 
-        .saved_row = 0,
-        .cursor_shown = true,
-        .origin_mode = false, 
-        .cursor_eol = false, 
-        .auto_wrap_mode = true, 
-        .vt52_mode = false, 
-        .localecho = false,
-        .saved_eol = false, 
-        .saved_origin_mode = false, 
-        .insert_mode = false,
-        .petscii_lower_case_charset = true
-    };
-    return term_state;
+// global_state create_global_state(void) {
+//     global_state term_state = 
+//     return term_state;
+// }
+
+global_state glob_st = (global_state) {
+    .terminal_state = TS_NORMAL,
+    .attr = 0,
+    .cur_attr = 0,
+    .cursor_col = 0,
+    .cursor_row = 0,
+    .saved_col = 0, 
+    .saved_row = 0,
+    .cursor_shown = true,
+    .origin_mode = false, 
+    .cursor_eol = false, 
+    .auto_wrap_mode = true, 
+    .vt52_mode = false, 
+    .localecho = false,
+    .saved_eol = false, 
+    .saved_origin_mode = false, 
+    .insert_mode = false,
+    .petscii_lower_case_charset = true
+};
+static global_state *gs = &glob_st;
+
+
+void internal_terminal_clear_screen() {
+  framebuf_fill_screen(' ', gs->color_fg, gs->color_bg);
+  init_cursor(0, 0);
+  gs->scroll_region_start = 0;
+  gs->scroll_region_end = framebuf_get_nrows()-1;
+  gs->origin_mode = false;
+}
+
+void INFLASHFUN internal_terminal_init() {
+  internal_terminal_reset();
+  internal_terminal_clear_screen();
+}
+
+// TODO: figure out local echo!!
+
+void INFLASHFUN send_char(char c)
+{
+  serial_send_char(c);
+//   if( localecho ) terminal_receive_char(c);
 }
 
 
-void INFLASHFUN show_cursor(global_state *gs, bool show)
+void INFLASHFUN send_string(const char *s)
+{
+  serial_send_string(s);
+//   if( localecho ) terminal_receive_string(s);
+}
+
+void INFLASHFUN send_cursor_sequence(char c)
+{
+  if( config_get_terminal_type()==CFG_TTYPE_VT52 || gs->vt52_mode )
+    { send_char(27); send_char(c); }
+  else
+    { send_char(27); send_char('['); send_char(c); }
+}
+
+
+void INFLASHFUN show_cursor(bool show)
 {
   uint8_t attr = ATTR_INVERSE;
   switch( config_get_terminal_cursortype() )
@@ -52,14 +92,14 @@ void INFLASHFUN show_cursor(global_state *gs, bool show)
 }
 
 
-void INFLASHFUN move_cursor_wrap(global_state *gs, int row, int col)
+void INFLASHFUN move_cursor_wrap(int row, int col)
 {
   if( row!=gs->cursor_row || col!=gs->cursor_col )
     {
       int top_limit    = gs->scroll_region_start;
       int bottom_limit = gs->scroll_region_end;
       
-      if( gs->cursor_shown && gs->cursor_row>=0 && gs->cursor_col>=0 ) show_cursor(gs, false);
+      if( gs->cursor_shown && gs->cursor_row>=0 && gs->cursor_col>=0 ) show_cursor(false);
       
       while( col<0 )                        { col += framebuf_get_ncols(row); row--; }
       while( row<top_limit )                { row++; framebuf_scroll_region(top_limit, bottom_limit, -1, gs->color_fg, gs->color_bg); }
@@ -71,11 +111,11 @@ void INFLASHFUN move_cursor_wrap(global_state *gs, int row, int col)
       gs->cursor_eol = false;
       
       gs->cur_attr = framebuf_get_attr(gs->cursor_col, gs->cursor_row);
-      if( gs->cursor_shown ) show_cursor(gs, true);
+      if( gs->cursor_shown ) show_cursor(true);
     }
 }
 
-void INFLASHFUN internal_terminal_reset(global_state *gs)
+void INFLASHFUN internal_terminal_reset()
 {
   gs->saved_col = 0;
   gs->saved_row = 0;
@@ -102,18 +142,18 @@ void INFLASHFUN internal_terminal_reset(global_state *gs)
   gs->petscii_lower_case_charset = true;
 }
 
-void INFLASHFUN print_char_vt(global_state *gs, char c)
+void INFLASHFUN print_char_vt(char c)
 {
   if( gs->cursor_eol ) 
     { 
       // cursor was already past the end of the line => move it to the next line now
-      move_cursor_wrap(gs, gs->cursor_row+1, 0); 
+      move_cursor_wrap(gs->cursor_row+1, 0); 
       gs->cursor_eol=false; 
     }
 
   if( gs->insert_mode )
     {
-      show_cursor(gs, false);
+      show_cursor(false);
       framebuf_insert(gs->cursor_col, gs->cursor_row, 1, gs->color_fg, gs->color_bg);
     }
 
@@ -130,11 +170,11 @@ void INFLASHFUN print_char_vt(global_state *gs, char c)
     {
       // cursor stays in last column but will wrap if another character is typed
       gs->cur_attr = gs->attr;
-      show_cursor(gs, gs->cursor_shown);
+      show_cursor(gs->cursor_shown);
       gs->cursor_eol=true;
     }
   else
-    init_cursor(gs, gs->cursor_row, gs->cursor_col+1);
+    init_cursor(gs->cursor_row, gs->cursor_col+1);
 }
 
 uint8_t INFLASHFUN get_charset(char c)
@@ -153,11 +193,11 @@ uint8_t INFLASHFUN get_charset(char c)
 
 
 
-static void INFLASHFUN move_cursor_within_region(global_state *gs, int row, int col, int top_limit, int bottom_limit)
+static void INFLASHFUN move_cursor_within_region(int row, int col, int top_limit, int bottom_limit)
 {
   if( row!=gs->cursor_row || col!=gs->cursor_col )
     {
-      if( gs->cursor_shown && gs->cursor_row>=0 && gs->cursor_col>=0 ) show_cursor(gs, false);
+      if( gs->cursor_shown && gs->cursor_row>=0 && gs->cursor_col>=0 ) show_cursor(false);
 
       if( col<0 ) 
         col = 0;
@@ -174,46 +214,32 @@ static void INFLASHFUN move_cursor_within_region(global_state *gs, int row, int 
       gs->cursor_eol = false;
 
       gs->cur_attr = framebuf_get_attr(gs->cursor_col, gs->cursor_row);
-      if( gs->cursor_shown ) show_cursor(gs, true);
+      if( gs->cursor_shown ) show_cursor(true);
     }
 }
 
-void INFLASHFUN init_cursor(global_state *gs, int row, int col)
+void INFLASHFUN init_cursor(int row, int col)
 {
   gs->cursor_row = -1;
   gs->cursor_col = -1;
-  move_cursor_within_region(gs, row, col, 0, framebuf_get_nrows()-1);
+  move_cursor_within_region(row, col, 0, framebuf_get_nrows()-1);
 }
 
-static void INFLASHFUN move_cursor_limited(global_state *gs, int row, int col)
+static void INFLASHFUN move_cursor_limited(int row, int col)
 {
   // only move if cursor is currently within scroll region, do not move
   // outside of scroll region
   if( gs->cursor_row >= gs->scroll_region_start && gs->cursor_row <= gs->scroll_region_end )
-    move_cursor_within_region(gs, row, col, gs->scroll_region_start, gs->scroll_region_end);
+    move_cursor_within_region(row, col, gs->scroll_region_start, gs->scroll_region_end);
 }
 
 
-static void INFLASHFUN send_char(global_state *gs, char c)
-{
-  serial_send_char(c);
-  if( gs->localecho ) internal_terminal_receive_char(gs, c);
-}
-
-
-static void INFLASHFUN send_string(global_state *gs, const char *s)
-{
-  serial_send_string(s);
-  if( gs->localecho ) internal_terminal_receive_string(gs, s);
-}
-
-
-void INFLASHFUN internal_terminal_process_text(global_state *gs, char c)
+void INFLASHFUN internal_terminal_process_text(char c)
 {
   switch( c )
     {
     case 5: // ENQ => send answer-back string
-      send_string(gs, config_get_terminal_answerback(gs));
+      send_string(config_get_terminal_answerback());
       break;
       
     case 7: // BEL => produce beep
@@ -232,16 +258,16 @@ void INFLASHFUN internal_terminal_process_text(global_state *gs, char c)
           {
             int top_limit = gs->origin_mode ? gs->scroll_region_start : 0;
             if( gs->cursor_row>top_limit )
-              move_cursor_wrap(gs, gs->cursor_row, gs->cursor_col-1);
+              move_cursor_wrap(gs->cursor_row, gs->cursor_col-1);
             else
-              move_cursor_limited(gs, gs->cursor_row, gs->cursor_col-1);
+              move_cursor_limited(gs->cursor_row, gs->cursor_col-1);
 
             if( mode==2 )
               {
                 framebuf_set_char(gs->cursor_col, gs->cursor_row, ' ');
                 framebuf_set_attr(gs->cursor_col, gs->cursor_row, 0);
                 gs->cur_attr = 0;
-                show_cursor(gs, gs->cursor_shown);
+                show_cursor(gs->cursor_shown);
               }
           }
 
@@ -252,7 +278,7 @@ void INFLASHFUN internal_terminal_process_text(global_state *gs, char c)
       {
         int col = gs->cursor_col+1;
         while( col < framebuf_get_ncols(gs->cursor_row)-1 && !(gs->tabs[col]) ) col++;
-        move_cursor_limited(gs, gs->cursor_row, col); 
+        move_cursor_limited(gs->cursor_row, col); 
         break;
       }
       
@@ -263,9 +289,9 @@ void INFLASHFUN internal_terminal_process_text(global_state *gs, char c)
       {
         switch( c=='\r' ? config_get_terminal_cr() : config_get_terminal_lf() )
           {
-          case 1: move_cursor_wrap(gs, gs->cursor_row, 0); break;
-          case 2: move_cursor_wrap(gs, gs->cursor_row+1, gs->cursor_col); break;
-          case 3: move_cursor_wrap(gs, gs->cursor_row+1, 0); break;
+          case 1: move_cursor_wrap(gs->cursor_row, 0); break;
+          case 2: move_cursor_wrap(gs->cursor_row+1, gs->cursor_col); break;
+          case 3: move_cursor_wrap(gs->cursor_row+1, 0); break;
           }
         break;
       }
@@ -279,12 +305,12 @@ void INFLASHFUN internal_terminal_process_text(global_state *gs, char c)
       break;
 
     default: // regular character
-      if( c>=32 ) print_char_vt(gs, c);
+      if( c>=32 ) print_char_vt(c);
       break;
     }
 }
 
-void INFLASHFUN internal_terminal_process_command(global_state *gs, char start_char, char final_char, uint8_t num_params, uint8_t *params)
+void INFLASHFUN internal_terminal_process_command(char start_char, char final_char, uint8_t num_params, uint8_t *params)
 {
   // NOTE: num_params>=1 always holds, if no parameters were received then params[0]=0
   if( final_char=='l' || final_char=='h' )
@@ -295,11 +321,11 @@ void INFLASHFUN internal_terminal_process_command(global_state *gs, char start_c
           switch( params[0] )
             {
             case 2:
-              if( !enabled ) { internal_terminal_reset(gs); gs->vt52_mode = true; }
+              if( !enabled ) { internal_terminal_reset(); gs->vt52_mode = true; }
               break;
 
             case 3: // switch 80/132 columm mode - 132 columns not supported but we can clear the screen
-              internal_terminal_clear_screen(gs);
+              internal_terminal_clear_screen();
               break;
 
             case 4: // enable smooth scrolling (emulated via scroll delay)
@@ -312,7 +338,7 @@ void INFLASHFUN internal_terminal_process_command(global_state *gs, char start_c
           
             case 6: // origin mode
               gs->origin_mode = enabled; 
-              move_cursor_limited(gs, gs->scroll_region_start, 0); 
+              move_cursor_limited(gs->scroll_region_start, 0); 
               break;
               
             case 7: // auto-wrap mode
@@ -325,7 +351,7 @@ void INFLASHFUN internal_terminal_process_command(global_state *gs, char start_c
               
             case 25: // show/hide cursor
               gs->cursor_shown = enabled;
-              show_cursor(gs, gs->cursor_shown);
+              show_cursor(gs->cursor_shown);
               break;
             }
         }
@@ -360,7 +386,7 @@ void INFLASHFUN internal_terminal_process_command(global_state *gs, char start_c
         }
 
       gs->cur_attr = framebuf_get_attr(gs->cursor_col, gs->cursor_row);
-      show_cursor(gs, gs->cursor_shown);
+      show_cursor(gs->cursor_shown);
     }
   else if( final_char=='K' )
     {
@@ -380,45 +406,45 @@ void INFLASHFUN internal_terminal_process_command(global_state *gs, char start_c
         }
 
       gs->cur_attr = framebuf_get_attr(gs->cursor_col, gs->cursor_row);
-      show_cursor(gs, gs->cursor_shown);
+      show_cursor(gs->cursor_shown);
     }
   else if( final_char=='A' )
     {
-      move_cursor_limited(gs, gs->cursor_row-MAX(1, params[0]), gs->cursor_col);
+      move_cursor_limited(gs->cursor_row-MAX(1, params[0]), gs->cursor_col);
     }
   else if( final_char=='B' )
     {
-      move_cursor_limited(gs, gs->cursor_row+MAX(1, params[0]), gs->cursor_col);
+      move_cursor_limited(gs->cursor_row+MAX(1, params[0]), gs->cursor_col);
     }
   else if( final_char=='C' || final_char=='a' )
     {
-      move_cursor_limited(gs, gs->cursor_row, gs->cursor_col+MAX(1, params[0]));
+      move_cursor_limited(gs->cursor_row, gs->cursor_col+MAX(1, params[0]));
     }
   else if( final_char=='D' || final_char=='j' )
     {
-      move_cursor_limited(gs, gs->cursor_row, gs->cursor_col-MAX(1, params[0]));
+      move_cursor_limited(gs->cursor_row, gs->cursor_col-MAX(1, params[0]));
     }
   else if( final_char=='E' || final_char=='e' )
     {
-      move_cursor_limited(gs, gs->cursor_row+MAX(1, params[0]), 0);
+      move_cursor_limited(gs->cursor_row+MAX(1, params[0]), 0);
     }
   else if( final_char=='F' || final_char=='k' )
     {
-      move_cursor_limited(gs, gs->cursor_row-MAX(1, params[0]), 0);
+      move_cursor_limited(gs->cursor_row-MAX(1, params[0]), 0);
     }
   else if( final_char=='d' )
     {
-      move_cursor_limited(gs, MAX(1, params[0])-1, gs->cursor_col);
+      move_cursor_limited(MAX(1, params[0])-1, gs->cursor_col);
     }
   else if( final_char=='G' || final_char=='`' )
     {
-      move_cursor_limited(gs, gs->cursor_row, MAX(1, params[0])-1);
+      move_cursor_limited(gs->cursor_row, MAX(1, params[0])-1);
     }
   else if( final_char=='H' || final_char=='f' )
     {
       int top_limit    = gs->origin_mode ? gs->scroll_region_start : 0;
       int bottom_limit = gs->origin_mode ? gs->scroll_region_end   : framebuf_get_nrows()-1;
-      move_cursor_within_region(gs, top_limit+MAX(params[0],1)-1, num_params<2 ? 0 : MAX(params[1],1)-1, top_limit, bottom_limit);
+      move_cursor_within_region(top_limit+MAX(params[0],1)-1, num_params<2 ? 0 : MAX(params[1],1)-1, top_limit, bottom_limit);
     }
   else if( final_char=='I' )
     {
@@ -429,7 +455,7 @@ void INFLASHFUN internal_terminal_process_command(global_state *gs, char start_c
           while( col < framebuf_get_ncols(gs->cursor_row)-1 && !gs->tabs[col] ) col++;
           n--;
         }
-      move_cursor_limited(gs, gs->cursor_row, col); 
+      move_cursor_limited(gs->cursor_row, col); 
     }
   else if( final_char=='Z' )
     {
@@ -440,41 +466,41 @@ void INFLASHFUN internal_terminal_process_command(global_state *gs, char start_c
           while( col>0 && !gs->tabs[col] ) col--;
           n--;
         }
-      move_cursor_limited(gs, gs->cursor_row, col); 
+      move_cursor_limited(gs->cursor_row, col); 
     }
   else if( final_char=='L' || final_char=='M' )
     {
       int n = MAX(1, params[0]);
       int bottom_limit = gs->origin_mode ? gs->scroll_region_end : framebuf_get_nrows()-1;
-      show_cursor(gs, false);
+      show_cursor(false);
       framebuf_scroll_region(gs->cursor_row, bottom_limit, final_char=='M' ? n : -n, gs->color_fg, gs->color_bg);
       gs->cur_attr = framebuf_get_attr(gs->cursor_col, gs->cursor_row);
-      show_cursor(gs, gs->cursor_shown);
+      show_cursor(gs->cursor_shown);
     }
   else if( final_char=='@' )
     {
       int n = MAX(1, params[0]);
-      show_cursor(gs, false);
+      show_cursor(false);
       framebuf_insert(gs->cursor_col, gs->cursor_row, n, gs->color_fg, gs->color_bg);
       gs->cur_attr = framebuf_get_attr(gs->cursor_col, gs->cursor_row);
-      show_cursor(gs, gs->cursor_shown);
+      show_cursor(gs->cursor_shown);
     }
   else if( final_char=='P' )
     {
       int n = MAX(1, params[0]);
       framebuf_delete(gs->cursor_col, gs->cursor_row, n, gs->color_fg, gs->color_bg);
       gs->cur_attr = framebuf_get_attr(gs->cursor_col, gs->cursor_row);
-      show_cursor(gs, gs->cursor_shown);
+      show_cursor(gs->cursor_shown);
     }
   else if( final_char=='S' || final_char=='T' )
     {
       int top_limit    = gs->origin_mode ? gs->scroll_region_start : 0;
       int bottom_limit = gs->origin_mode ? gs->scroll_region_end   : framebuf_get_nrows()-1;
       int n = MAX(1, params[0]);
-      show_cursor(gs, false);
+      show_cursor(false);
       while( n-- ) framebuf_scroll_region(top_limit, bottom_limit, final_char=='S' ? n : -n, gs->color_fg, gs->color_bg);
       gs->cur_attr = framebuf_get_attr(gs->cursor_col, gs->cursor_row);
-      show_cursor(gs, gs->cursor_shown);
+      show_cursor(gs->cursor_shown);
     }
   else if( final_char=='g' )
     {
@@ -497,7 +523,7 @@ void INFLASHFUN internal_terminal_process_command(global_state *gs, char start_c
               gs->color_bg = config_get_terminal_default_bg();
               gs->attr     = config_get_terminal_default_attr();
               //cursor_shown = true;
-              show_cursor(gs, gs->cursor_shown);
+              show_cursor(gs->cursor_shown);
             }
           else if( p==1 )
             gs->attr |= ATTR_BOLD;
@@ -528,7 +554,7 @@ void INFLASHFUN internal_terminal_process_command(global_state *gs, char start_c
           else if( p==49 )
             gs->color_bg = config_get_terminal_default_bg();
 
-          show_cursor(gs, gs->cursor_shown);
+          show_cursor(gs->cursor_shown);
         }
     }
   else if( final_char=='r' )
@@ -544,7 +570,7 @@ void INFLASHFUN internal_terminal_process_command(global_state *gs, char start_c
           gs->scroll_region_end   = framebuf_get_nrows()-1;
         }
 
-      move_cursor_within_region(gs, gs->scroll_region_start, 0, gs->scroll_region_start, gs->scroll_region_end);
+      move_cursor_within_region(gs->scroll_region_start, 0, gs->scroll_region_start, gs->scroll_region_end);
     }
   else if( final_char=='s' )
     {
@@ -560,7 +586,7 @@ void INFLASHFUN internal_terminal_process_command(global_state *gs, char start_c
     }
   else if( final_char=='u' )
     {
-      move_cursor_limited(gs, gs->saved_row, gs->saved_col);
+      move_cursor_limited(gs->saved_row, gs->saved_col);
       gs->origin_mode = gs->saved_origin_mode;      
       gs->cursor_eol = gs->saved_eol;
       gs->color_fg = gs->saved_fg;
@@ -576,14 +602,14 @@ void INFLASHFUN internal_terminal_process_command(global_state *gs, char start_c
       // https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h4-Functions-using-CSI-_-ordered-by-the-final-character-lparen-s-rparen:CSI-Ps-c.1CA3
       // "ESC [?1;0c" => base VT100, no options
       // "ESC [?6c"   => VT102
-      send_string(gs, "\033[?6c");
+      send_string("\033[?6c");
     }
   else if( final_char=='n' )
     {
       if( params[0] == 5 )
         {
           // terminal status report
-          send_string(gs, "\033[0n");
+          send_string("\033[0n");
         }
       else if( params[0] == 6 )
         {
@@ -591,7 +617,7 @@ void INFLASHFUN internal_terminal_process_command(global_state *gs, char start_c
           int top_limit = gs->origin_mode ? gs->scroll_region_start : 0;
           char buf[20];
           snprintf(buf, 20, "\033[%u;%uR", gs->cursor_row-top_limit+1, gs->cursor_col+1);
-          send_string(gs, buf);
+          send_string(buf);
         }
     }
 }
