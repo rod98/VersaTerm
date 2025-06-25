@@ -67,8 +67,8 @@ void INFLASHFUN terminal_process_key(uint16_t key)
     }
 //   else if( config_get_terminal_type()==2 )
 //     terminal_process_key_petscii(key);
-//   else
-//     terminal_process_key_vt(key);
+  else
+    terminal_process_key_vt(key);
 }
 
 

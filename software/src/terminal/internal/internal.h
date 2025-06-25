@@ -20,10 +20,6 @@
 #define CS_TEXT_UK  1
 #define CS_GRAPHICS 2
 
-// void internal_terminal_receive_char(char c);
-// void internal_terminal_receive_string(const char* str);
-// void internal_terminal_process_key(uint16_t key);
-
 void internal_terminal_clear_screen();
 void internal_terminal_init();
 void internal_terminal_apply_settings();
