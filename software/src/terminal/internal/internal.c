@@ -55,19 +55,20 @@ void INFLASHFUN internal_terminal_init() {
   internal_terminal_clear_screen();
 }
 
-// TODO: figure out local echo!!
+// Defined in terminal.c
+void terminal_receive_string(const char* str);
+void terminal_receive_char(char c);
 
 void INFLASHFUN send_char(char c)
 {
   serial_send_char(c);
-//   if( localecho ) terminal_receive_char(c);
+  if( gs->localecho ) terminal_receive_char(c);
 }
-
 
 void INFLASHFUN send_string(const char *s)
 {
   serial_send_string(s);
-//   if( localecho ) terminal_receive_string(s);
+  if( gs->localecho ) terminal_receive_string(s);
 }
 
 void INFLASHFUN send_cursor_sequence(char c)
