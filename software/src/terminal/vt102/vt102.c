@@ -32,7 +32,7 @@ void INFLASHFUN terminal_receive_char_vt102(char c)
         {
           // processe some cursor control characters within escape sequences
           // (otherwise we fail "vttest" cursor control tests)
-          internal_terminal_process_text(c);
+          terminal_process_text(c);
           return;
         }
       else if( c==11 )
@@ -51,7 +51,7 @@ void INFLASHFUN terminal_receive_char_vt102(char c)
         if( c==27 )
           gs->terminal_state = TS_WAITBRACKET;
         else
-          internal_terminal_process_text(c);
+          terminal_process_text(c);
 
         break;
       }
@@ -75,11 +75,11 @@ void INFLASHFUN terminal_receive_char_vt102(char c)
             
           case  27: print_char_vt(c); break;                           // escaped ESC
           case 'c': internal_terminal_reset(gs); break;                           // reset
-          case '7': internal_terminal_process_command(0, 's', 0, NULL); break;  // save cursor position
-          case '8': internal_terminal_process_command(0, 'u', 0, NULL); break;  // restore cursor position
+          case '7': terminal_process_command(0, 's', 0, NULL); break;  // save cursor position
+          case '8': terminal_process_command(0, 'u', 0, NULL); break;  // restore cursor position
           case 'H': gs->tabs[gs->cursor_col] = true; break;                    // set tab
-          case 'J': internal_terminal_process_command(0, 'J', 0, NULL); break;  // clear to end of screen
-          case 'K': internal_terminal_process_command(0, 'K', 0, NULL); break;  // clear to end of row
+          case 'J': terminal_process_command(0, 'J', 0, NULL); break;  // clear to end of screen
+          case 'K': terminal_process_command(0, 'K', 0, NULL); break;  // clear to end of row
           case 'D': move_cursor_wrap(gs->cursor_row+1, gs->cursor_col); break; // cursor down
           case 'E': move_cursor_wrap(gs->cursor_row+1, 0); break;          // cursor down and to first column
           case 'I': move_cursor_wrap(gs->cursor_row-1, 0); break;          // cursor up and to furst column
@@ -124,7 +124,7 @@ void INFLASHFUN terminal_receive_char_vt102(char c)
         else
           {
             // not a parameter value or startchar => command is done
-            internal_terminal_process_command(start_char, c, num_params, params);
+            terminal_process_command(start_char, c, num_params, params);
             gs->terminal_state = TS_NORMAL;
           }
         

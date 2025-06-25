@@ -3,6 +3,6 @@
 
 #include "../internal/internal.h"
 
-void terminal_receive_char_vt52(global_state *gs, char c);
+void terminal_receive_char_vt52(char c);
 
 #endif

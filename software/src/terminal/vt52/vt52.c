@@ -1,13 +1,35 @@
+#include "vt52.h"
+#include "framebuf.h"
+#include "font.h"
+#include "config.h"
+#include "pins.h"
+#include "serial.h"
+#include "sound.h"
+#include "keyboard.h"
+#include "hardware/uart.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+#include "../internal/internal.h"
+#include "../terminal.h"
+
+#define INFLASHFUN __in_flash(".terminalfun") 
+
+extern global_state glob_st;
+static global_state *gs = &glob_st;
+
 void INFLASHFUN terminal_receive_char_vt52(char c)
 {
   static char start_char, row;
 
-  switch( terminal_state )
+  switch( gs->terminal_state )
     {
     case TS_NORMAL:
       {
         if( c==27 )
-          terminal_state = TS_STARTCHAR;
+          gs->terminal_state = TS_STARTCHAR;
         else
           terminal_process_text(c);
         
@@ -16,28 +38,28 @@ void INFLASHFUN terminal_receive_char_vt52(char c)
 
     case TS_STARTCHAR:
       {
-        terminal_state = TS_NORMAL;
+        gs->terminal_state = TS_NORMAL;
 
         switch( c )
           {
           case 'A': 
-            move_cursor_limited(cursor_row-1, cursor_col);
+            move_cursor_limited(gs->cursor_row-1, gs->cursor_col);
             break;
 
           case 'B': 
-            move_cursor_limited(cursor_row+1, cursor_col);
+            move_cursor_limited(gs->cursor_row+1, gs->cursor_col);
             break;
 
           case 'C': 
-            move_cursor_limited(cursor_row, cursor_col+1);
+            move_cursor_limited(gs->cursor_row, gs->cursor_col+1);
             break;
 
           case 'D': 
-            move_cursor_limited(cursor_row, cursor_col-1);
+            move_cursor_limited(gs->cursor_row, gs->cursor_col-1);
             break;
 
           case 'E':
-            framebuf_fill_screen(' ', color_fg, color_bg);
+            framebuf_fill_screen(' ', gs->color_fg, gs->color_bg);
             // fall through
 
           case 'H': 
@@ -45,35 +67,35 @@ void INFLASHFUN terminal_receive_char_vt52(char c)
             break;
 
           case 'I': 
-            move_cursor_wrap(cursor_row-1, cursor_col);
+            move_cursor_wrap(gs->cursor_row-1, gs->cursor_col);
             break;
 
           case 'J':
             show_cursor(false);
-            framebuf_fill_region(cursor_col, cursor_row, framebuf_get_ncols(cursor_row)-1, framebuf_get_nrows()-1, ' ', color_fg, color_bg);
-            cur_attr = framebuf_get_attr(cursor_col, cursor_row);
-            show_cursor(cursor_shown);
+            framebuf_fill_region(gs->cursor_col, gs->cursor_row, framebuf_get_ncols(gs->cursor_row)-1, framebuf_get_nrows()-1, ' ', gs->color_fg, gs->color_bg);
+            gs->cur_attr = framebuf_get_attr(gs->cursor_col, gs->cursor_row);
+            show_cursor(gs->cursor_shown);
             break;
 
           case 'K':
             show_cursor(false);
-            framebuf_fill_region(cursor_col, cursor_row, framebuf_get_ncols(cursor_row)-1, cursor_row, ' ', color_fg, color_bg);
-            cur_attr = framebuf_get_attr(cursor_col, cursor_row);
-            show_cursor(cursor_shown);
+            framebuf_fill_region(gs->cursor_col, gs->cursor_row, framebuf_get_ncols(gs->cursor_row)-1, gs->cursor_row, ' ', gs->color_fg, gs->color_bg);
+            gs->cur_attr = framebuf_get_attr(gs->cursor_col, gs->cursor_row);
+            show_cursor(gs->cursor_shown);
             break;
 
           case 'L':
           case 'M':
             show_cursor(false);
-            framebuf_scroll_region(cursor_row, framebuf_get_nrows()-1, c=='M' ? 1 : -1, color_fg, color_bg);
-            cur_attr = framebuf_get_attr(cursor_col, cursor_row);
-            show_cursor(cursor_shown);
+            framebuf_scroll_region(gs->cursor_row, framebuf_get_nrows()-1, c=='M' ? 1 : -1, gs->color_fg, gs->color_bg);
+            gs->cur_attr = framebuf_get_attr(gs->cursor_col, gs->cursor_row);
+            show_cursor(gs->cursor_shown);
             break;
 
           case 'Y':
             start_char = c;
             row = 0;
-            terminal_state = TS_READPARAM;
+            gs->terminal_state = TS_READPARAM;
             break;
             
           case 'Z':
@@ -83,12 +105,12 @@ void INFLASHFUN terminal_receive_char_vt52(char c)
           case 'b':
           case 'c':
             start_char = c;
-            terminal_state = TS_READPARAM;
+            gs->terminal_state = TS_READPARAM;
             break;
 
           case 'd':
-            framebuf_fill_region(0, 0, cursor_col, cursor_row, ' ', color_fg, color_bg);
-            init_cursor(cursor_col, cursor_row);
+            framebuf_fill_region(0, 0, gs->cursor_col, gs->cursor_row, ' ', gs->color_fg, gs->color_bg);
+            init_cursor(gs->cursor_col, gs->cursor_row);
             break;
             
           case 'e':
@@ -100,22 +122,22 @@ void INFLASHFUN terminal_receive_char_vt52(char c)
             break;
 
           case 'j':
-            saved_col = cursor_col;
-            saved_row = cursor_row;
+            gs->saved_col = gs->cursor_col;
+            gs->saved_row = gs->cursor_row;
             break;
 
           case 'k':
-            move_cursor_limited(saved_row, saved_col);
+            move_cursor_limited(gs->saved_row, gs->saved_col);
             break;
 
           case 'l':
-            framebuf_fill_region(0, cursor_row, framebuf_get_ncols(cursor_row)-1, cursor_row, ' ', color_fg, color_bg);
-            init_cursor(0, cursor_row);
+            framebuf_fill_region(0, gs->cursor_row, framebuf_get_ncols(gs->cursor_row)-1, gs->cursor_row, ' ', gs->color_fg, gs->color_bg);
+            init_cursor(0, gs->cursor_row);
             break;
 
           case 'o':
-            framebuf_fill_region(0, cursor_row, cursor_col, cursor_row, ' ', color_fg, color_bg);
-            show_cursor(cursor_shown);
+            framebuf_fill_region(0, gs->cursor_row, gs->cursor_col, gs->cursor_row, ' ', gs->color_fg, gs->color_bg);
+            show_cursor(gs->cursor_shown);
             break;
 
           case 'p':
@@ -127,16 +149,16 @@ void INFLASHFUN terminal_receive_char_vt52(char c)
             break;
 
           case 'v':
-            auto_wrap_mode = true;
+            gs->auto_wrap_mode = true;
             break;
 
           case 'w':
-            auto_wrap_mode = false;
+            gs->auto_wrap_mode = false;
             break;
 
           case '<':
             terminal_reset();
-            vt52_mode = false;
+            gs->vt52_mode = false;
             break;
           }
 
@@ -152,18 +174,18 @@ void INFLASHFUN terminal_receive_char_vt52(char c)
             else
               {
                 if( row>=32 && c>=32 ) move_cursor_limited(row-32, c-32);
-                terminal_state = TS_NORMAL;
+                gs->terminal_state = TS_NORMAL;
               }
           }
         else if( start_char=='b' && c>=32 )
           {
-            color_fg = (c-32) & 15;
-            show_cursor(cursor_shown);
+            gs->color_fg = (c-32) & 15;
+            show_cursor(gs->cursor_shown);
           }
         else if( start_char=='c' && c>=32 )
           {
-            color_bg = (c-32) & 15;
-            show_cursor(cursor_shown);
+            gs->color_bg = (c-32) & 15;
+            show_cursor(gs->cursor_shown);
           }
 
         break;

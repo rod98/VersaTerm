@@ -225,7 +225,7 @@ void INFLASHFUN init_cursor(int row, int col)
   move_cursor_within_region(row, col, 0, framebuf_get_nrows()-1);
 }
 
-static void INFLASHFUN move_cursor_limited(int row, int col)
+void INFLASHFUN move_cursor_limited(int row, int col)
 {
   // only move if cursor is currently within scroll region, do not move
   // outside of scroll region
@@ -234,7 +234,7 @@ static void INFLASHFUN move_cursor_limited(int row, int col)
 }
 
 
-void INFLASHFUN internal_terminal_process_text(char c)
+void INFLASHFUN terminal_process_text(char c)
 {
   switch( c )
     {
@@ -310,7 +310,7 @@ void INFLASHFUN internal_terminal_process_text(char c)
     }
 }
 
-void INFLASHFUN internal_terminal_process_command(char start_char, char final_char, uint8_t num_params, uint8_t *params)
+void INFLASHFUN terminal_process_command(char start_char, char final_char, uint8_t num_params, uint8_t *params)
 {
   // NOTE: num_params>=1 always holds, if no parameters were received then params[0]=0
   if( final_char=='l' || final_char=='h' )
