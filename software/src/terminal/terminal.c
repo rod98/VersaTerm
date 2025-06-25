@@ -2,6 +2,7 @@
 #include "internal/internal.h"
 
 #include "vt102/vt102.h"
+#include "vt52/vt52.h"
 
 #include "framebuf.h"
 #include "font.h"
@@ -32,9 +33,9 @@ void INFLASHFUN terminal_receive_char(char c)
     case CFG_TTYPE_VT102:
       if( !gs->vt52_mode ) { terminal_receive_char_vt102(c); break; }
 
-    // case CFG_TTYPE_VT52:
-    //   terminal_receive_char_vt52(c);
-    //   break;
+    case CFG_TTYPE_VT52:
+      terminal_receive_char_vt52(c);
+      break;
 
     // case CFG_TTYPE_PETSCII:
     //   terminal_receive_char_petscii(c);
