@@ -3,6 +3,7 @@
 
 #include "vt102/vt102.h"
 #include "vt52/vt52.h"
+#include "petscii/petscii.h"
 
 #include "framebuf.h"
 #include "font.h"
@@ -37,9 +38,9 @@ void INFLASHFUN terminal_receive_char(char c)
       terminal_receive_char_vt52(c);
       break;
 
-    // case CFG_TTYPE_PETSCII:
-    //   terminal_receive_char_petscii(c);
-    //   break;
+    case CFG_TTYPE_PETSCII:
+      terminal_receive_char_petscii(c);
+      break;
     }
 }
 

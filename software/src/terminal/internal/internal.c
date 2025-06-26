@@ -1,5 +1,5 @@
 #include "internal.h"
-
+#include "../terminal.h"
 #include "framebuf.h"
 #include "font.h"
 #include "config.h"
@@ -54,10 +54,6 @@ void INFLASHFUN internal_terminal_init() {
   internal_terminal_reset();
   internal_terminal_clear_screen();
 }
-
-// Defined in terminal.c
-void terminal_receive_string(const char* str);
-void terminal_receive_char(char c);
 
 void INFLASHFUN send_char(char c)
 {

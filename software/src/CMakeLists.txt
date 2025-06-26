@@ -8,6 +8,7 @@ add_executable(VersaTerm
         terminal/internal/internal.c
         terminal/vt102/vt102.c
         terminal/vt52/vt52.c
+        terminal/petscii/petscii.c
         keyboard.c
         keyboard_usb.c
         keyboard_ps2.c

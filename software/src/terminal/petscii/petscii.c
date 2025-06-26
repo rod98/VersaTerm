@@ -1,5 +1,40 @@
+#include "petscii.h"
+#include "framebuf.h"
+#include "font.h"
+#include "config.h"
+#include "pins.h"
+#include "serial.h"
+#include "sound.h"
+#include "keyboard.h"
+#include "hardware/uart.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <stdint.h>
 
-static void INFLASHFUN terminal_receive_char_petscii(uint8_t c)
+#include "../internal/internal.h"
+#include "../terminal.h"
+
+#define INFLASHFUN __in_flash(".terminalfun") 
+
+extern global_state glob_st;
+static global_state *gs = &glob_st;
+
+static bool petscii_lower_case_charset = true;
+
+static void INFLASHFUN print_char_petscii(char c)
+{
+  framebuf_set_color(gs->cursor_col, gs->cursor_row, gs->color_fg, gs->color_bg);
+  framebuf_set_attr(gs->cursor_col, gs->cursor_row, gs->attr);
+  framebuf_set_char(gs->cursor_col, gs->cursor_row, c);
+  int row = gs->cursor_row, col = gs->cursor_col;
+  gs->cursor_row = -1;
+  gs->cursor_col = -1;
+  move_cursor_wrap(row, col+1);
+}
+
+void INFLASHFUN terminal_receive_char_petscii(uint8_t c)
 {
   static uint8_t inserted = 0;
   static bool quoteMode = false;
@@ -43,11 +78,11 @@ static void INFLASHFUN terminal_receive_char_petscii(uint8_t c)
           
       if( cc>0 )
         {
-          uint8_t a = attr;
-          attr |= ATTR_INVERSE;
+          uint8_t a = gs->attr;
+          gs->attr |= ATTR_INVERSE;
           print_char_petscii(cc);
           if( inserted>0 ) inserted--;
-          attr = a;
+          gs->attr = a;
           return;
         }
     }
@@ -55,7 +90,7 @@ static void INFLASHFUN terminal_receive_char_petscii(uint8_t c)
   switch( c )
     {
     case 5: // WHITE
-      color_fg = 1;
+      gs->color_fg = 1;
       break;
 
     case 10:  // LF
@@ -64,11 +99,11 @@ static void INFLASHFUN terminal_receive_char_petscii(uint8_t c)
       {
         switch( c==10 ? config_get_terminal_lf() : config_get_terminal_cr() )
           {
-          case 1: move_cursor_wrap(cursor_row, 0); break;
-          case 2: move_cursor_wrap(cursor_row+1, cursor_col); break;
-          case 3: move_cursor_wrap(cursor_row+1, 0); break;
+          case 1: move_cursor_wrap(gs->cursor_row, 0); break;
+          case 2: move_cursor_wrap(gs->cursor_row+1, gs->cursor_col); break;
+          case 3: move_cursor_wrap(gs->cursor_row+1, 0); break;
           }
-        if( c!=10 ) { inserted = 0; quoteMode = false; attr &= ~ATTR_INVERSE; }
+        if( c!=10 ) { inserted = 0; quoteMode = false; gs->attr &= ~ATTR_INVERSE; }
         break;
       }
 
@@ -89,11 +124,11 @@ static void INFLASHFUN terminal_receive_char_petscii(uint8_t c)
       break;
 
     case 17: // cursor down
-      move_cursor_wrap(cursor_row+1, cursor_col);
+      move_cursor_wrap(gs->cursor_row+1, gs->cursor_col);
       break;
 
     case 18: // enable reverse character mode
-      attr |= ATTR_INVERSE;
+      gs->attr |= ATTR_INVERSE;
       break;
 
     case 19: // cursor home
@@ -101,33 +136,33 @@ static void INFLASHFUN terminal_receive_char_petscii(uint8_t c)
       break;
 
     case 20: // backspace/delete
-      if( cursor_col>0 || cursor_row>0 )
+      if( gs->cursor_col>0 || gs->cursor_row>0 )
         {
-          move_cursor_wrap(cursor_row, cursor_col-1);
-          framebuf_delete(cursor_col, cursor_row, 1, color_fg, color_bg);
-          cur_attr = framebuf_get_attr(cursor_col, cursor_row);
-          show_cursor(cursor_shown);
+          move_cursor_wrap(gs->cursor_row, gs->cursor_col-1);
+          framebuf_delete(gs->cursor_col, gs->cursor_row, 1, gs->color_fg, gs->color_bg);
+          gs->cur_attr = framebuf_get_attr(gs->cursor_col, gs->cursor_row);
+          show_cursor(gs->cursor_shown);
         }
       break;
 
     case 28: // red
-      color_fg = 2;
+      gs->color_fg = 2;
       break;
 
     case 29: // cursor right
-      move_cursor_wrap(cursor_row, cursor_col+1);
+      move_cursor_wrap(gs->cursor_row, gs->cursor_col+1);
       break;
       
     case 30: // green
-      color_fg = 5;
+      gs->color_fg = 5;
       break;
 
     case 31: // blue
-      color_fg = 6;
+      gs->color_fg = 6;
       break;
 
     case 129: // orange
-      color_fg = 8;
+      gs->color_fg = 8;
       break;
 
     case 142: // Switch to upper case character set
@@ -147,15 +182,15 @@ static void INFLASHFUN terminal_receive_char_petscii(uint8_t c)
       break;
 
     case 144: // black
-      color_fg = 0;
+      gs->color_fg = 0;
       break;
 
     case 145: // cursor up
-      move_cursor_limited(cursor_row-1, cursor_col);
+      move_cursor_limited(gs->cursor_row-1, gs->cursor_col);
       break;
 
     case 146: // disable reverse character mode
-      attr &= ~ATTR_INVERSE;
+      gs->attr &= ~ATTR_INVERSE;
       break;
 
     case 147: // clear screen
@@ -164,57 +199,57 @@ static void INFLASHFUN terminal_receive_char_petscii(uint8_t c)
 
     case 148: // insert
       show_cursor(false);
-      framebuf_insert(cursor_col, cursor_row, 1, color_fg, color_bg);
-      cur_attr = framebuf_get_attr(cursor_col, cursor_row);
-      show_cursor(cursor_shown);
+      framebuf_insert(gs->cursor_col, gs->cursor_row, 1, gs->color_fg, gs->color_bg);
+      gs->cur_attr = framebuf_get_attr(gs->cursor_col, gs->cursor_row);
+      show_cursor(gs->cursor_shown);
       inserted++;
       break;
 
     case 149: // brown
-      color_fg = 9;
+      gs->color_fg = 9;
       break;
 
     case 150: // light red
-      color_fg = 10;
+      gs->color_fg = 10;
       break;
 
     case 151: // dark grey
-      color_fg = 11;
+      gs->color_fg = 11;
       break;
 
     case 152: // grey
-      color_fg = 12;
+      gs->color_fg = 12;
       break;
 
     case 153: // light green
-      color_fg = 13;
+      gs->color_fg = 13;
       break;
 
     case 154: // light blue
-      color_fg = 14;
+      gs->color_fg = 14;
       break;
 
     case 155: // light gray
-      color_fg = 15;
+      gs->color_fg = 15;
       break;
 
     case 156: // purple
-      color_fg = 4;
+      gs->color_fg = 4;
       break;
 
     case 157: // cursor left
-      if( cursor_row>0 )
-        move_cursor_wrap(cursor_row, cursor_col-1);
+      if( gs->cursor_row>0 )
+        move_cursor_wrap(gs->cursor_row, gs->cursor_col-1);
       else
-        move_cursor_limited(cursor_row, cursor_col-1);
+        move_cursor_limited(gs->cursor_row, gs->cursor_col-1);
       break;
 
     case 158: // yellow
-      color_fg = 7;
+      gs->color_fg = 7;
       break;
 
     case 159: // cyan
-      color_fg = 3;
+      gs->color_fg = 3;
       break;
 
     default:
