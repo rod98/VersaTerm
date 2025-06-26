@@ -1,3 +1,0 @@
-/home/penguin/Programming/versaterm/VersaTerm/software/build/pioasm/CMakeFiles/pioasm.dir
-/home/penguin/Programming/versaterm/VersaTerm/software/build/pioasm/CMakeFiles/edit_cache.dir
-/home/penguin/Programming/versaterm/VersaTerm/software/build/pioasm/CMakeFiles/rebuild_cache.dir
