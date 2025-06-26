@@ -37,6 +37,8 @@
 
 #define INFLASHFUN __in_flash(".terminalfun") 
 
+void wait(uint32_t milliseconds);
+
 extern global_state glob_st;
 static global_state *gs = &glob_st;
 
@@ -304,4 +306,81 @@ void INFLASHFUN terminal_receive_char_petscii(uint8_t c)
         break;
       }
     }
+}
+
+void INFLASHFUN terminal_process_key_petscii(uint16_t key)
+{
+  uint8_t cc = 0;
+
+  // mapping the key to ASCII performs three important functions:
+  // - apply mapping according to keyboard layout (language)
+  // - map numpad keys to regular keys
+  // - provide LeftAlt-NNN for entering specific codes
+  bool isaltcode = false;
+  uint8_t c = keyboard_map_key_ascii(key, &isaltcode);
+
+  // if c is the result of user pressing LeftAlt-NNN then send without mapping
+  if( isaltcode ) { send_char(c); return; }
+
+  switch( c )
+    {
+    case KEY_UP:        cc = 145; break;
+    case KEY_DOWN:      cc = 17;  break;
+    case KEY_RIGHT:     cc = 29;  break;
+    case KEY_LEFT:      cc = 157; break;
+    case KEY_ENTER:     cc = 13;  break;
+    case KEY_HOME:      cc = keyboard_shift_pressed(key) ? 147 : 19;  break;
+    case KEY_BACKSPACE: cc = 20;  break;
+    case KEY_DELETE:    cc = 20;  break;
+    case KEY_INSERT:    cc = 148; break;
+    case KEY_F1:        cc = 133; break;
+    case KEY_F2:        cc = 137; break;
+    case KEY_F3:        cc = 134; break;
+    case KEY_F4:        cc = 138; break;
+    case KEY_F5:        cc = 135; break;
+    case KEY_F6:        cc = 139; break;
+    case KEY_F7:        cc = 136; break;
+    case KEY_F8:        cc = 140; break;
+    case '`':           cc =  95; break; // left arrow 
+    case '\\':          cc =  94; break; // up arrow
+    case '|':           cc = 126; break; // pi
+    case '_':           cc = 123; break; // full cross
+    case '{':           cc = 186; break; // bottom right corner
+    case '}':           cc = 192; break; // middle line
+    case '-':           cc = keyboard_alt_pressed(key) ? 126 : c; break; // full checkerboard
+    case '[':           cc = keyboard_alt_pressed(key) ? 164 : c; break; // underscore
+    case ']':           cc = keyboard_alt_pressed(key) ? 223 : c; break; // top right triangle
+
+    default:  
+      {
+        if( keyboard_alt_pressed(key) && c>='a' && c <='z' )
+          {
+            static const uint8_t gfx[26] = {176, 191, 188, 172, 177, 187, 165, 180, 162, 181, 161, 182, 167, 
+                                            170, 185, 175, 171, 178, 174, 163, 184, 190, 179, 189, 183, 173};
+            cc = gfx[c-'a'];
+          }
+        else if( keyboard_ctrl_pressed(key) && c>='0' && c<='9' )
+          {
+            static const uint8_t colors[10] = {146, 144, 5, 28, 159, 156, 30, 31, 158, 18};
+            cc = colors[c-'0'];
+          }
+        else if( keyboard_alt_pressed(key) && c>='1' && c<='8' )
+          {
+            static const uint8_t colors[8] = {129, 149, 150, 151, 152, 153, 154, 155};
+            cc = colors[c-'1'];
+          }
+        else if( keyboard_ctrl_pressed(key) && keyboard_shift_pressed(key) && (key&0xFF)==HID_KEY_Z )
+          cc = petscii_lower_case_charset ? 142 : 14;
+        else if( c>='a' && c<='z' )
+          cc = c - 32;
+        else if( c>='A' && c<='Z' )
+          cc = c + 128;
+        else //if( c<127 )
+          cc = c;
+      }
+          
+      break;
+    }
+
+  if( cc>0 ) send_char(cc);
 }

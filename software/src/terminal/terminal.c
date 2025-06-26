@@ -91,8 +91,10 @@ void INFLASHFUN terminal_process_key(uint16_t key)
       sound_play_tone(880, 50, config_get_audible_bell_volume(), false);
       gs->localecho = !gs->localecho;
     }
-  else if( config_get_terminal_type()==2 )
+  else if( config_get_terminal_type()==CFG_TTYPE_PETSCII )
     terminal_process_key_petscii(key);
+  else if( config_get_terminal_type()==CFG_TTYPE_FANSI )
+    terminal_process_key_fansi(key);
   else
     terminal_process_key_vt(key);
 }

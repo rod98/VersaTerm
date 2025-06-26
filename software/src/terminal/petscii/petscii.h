@@ -22,6 +22,7 @@
 
 #include <stdint.h>
 
-void terminal_receive_char_petscii(uint8_t c);
+void terminal_receive_char_petscii(uint8_t  c);
+void terminal_process_key_petscii (uint16_t key);
 
 #endif
