@@ -34,6 +34,7 @@
 #define CFG_TTYPE_VT102   0
 #define CFG_TTYPE_VT52    1
 #define CFG_TTYPE_PETSCII 2
+#define CFG_TTYPE_FANSI   3
 
 uint32_t config_get_serial_baud();
 uint8_t  config_get_serial_bits();
