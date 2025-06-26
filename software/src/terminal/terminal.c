@@ -23,6 +23,7 @@
 #include "vt102/vt102.h"
 #include "vt52/vt52.h"
 #include "petscii/petscii.h"
+#include "fansi/fansi.h"
 
 #include "framebuf.h"
 #include "font.h"
@@ -60,6 +61,10 @@ void INFLASHFUN terminal_receive_char(char c)
     case CFG_TTYPE_PETSCII:
       terminal_receive_char_petscii(c);
       break;
+
+    case CFG_TTYPE_FANSI:
+      terminal_receive_char_fansi(c);
+      break;
     }
 }
 
@@ -86,8 +91,8 @@ void INFLASHFUN terminal_process_key(uint16_t key)
       sound_play_tone(880, 50, config_get_audible_bell_volume(), false);
       gs->localecho = !gs->localecho;
     }
-//   else if( config_get_terminal_type()==2 )
-//     terminal_process_key_petscii(key);
+  else if( config_get_terminal_type()==2 )
+    terminal_process_key_petscii(key);
   else
     terminal_process_key_vt(key);
 }
