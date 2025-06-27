@@ -16,14 +16,66 @@
 #include "../internal/internal.h"
 #include "../vt102/vt102.h"
 #include "../terminal.h"
+#include "utf.h"
 
 #define INFLASHFUN __in_flash(".terminalfun") 
 
 extern global_state glob_st;
 static global_state *gs = &glob_st;
 
+static uint8_t  utfs_left = 0;
+static uint32_t utfs_sum  = 0;
+static bool     in_utf    = false;
+
 void terminal_receive_char_fansi(char c) {
-    terminal_receive_char_vt102(c);
+    unsigned char uc  = (unsigned char)c;
+    unsigned char bit = 1 << 7;
+
+    if (uc < 128) {
+        // means the prev char was a regular high-value char, not start of utf :(
+        if (in_utf)
+            terminal_receive_char_vt102(utfs_sum | (128 + 64));
+
+        in_utf = false;
+    }
+    
+    if (in_utf) {
+        utfs_left -= 1;
+
+        utfs_sum <<= 6;
+        utfs_sum  += (bit - 1) & uc;
+
+        if (!utfs_left) {
+            int i;
+            char *s = utf2font(utfs_sum);
+
+            for (i = 0; s[i]; ++i)
+                terminal_receive_char_vt102(s[i]);
+
+            in_utf = false;
+        }
+    }
+    else {
+        if ((uc & (128 + 64)) != (128 + 64)) {
+            terminal_receive_char_vt102(c);
+        }
+        else {
+            in_utf = true;
+
+            while (bit & uc) {
+                utfs_left += 1;
+                bit      >>= 1;
+            }
+            utfs_left -= 1;
+
+            utfs_sum = ((bit - 1) & uc);
+        }
+    }
+
+    if (!in_utf) {
+        utfs_sum  = 0;
+        utfs_left = 0;
+    }
 }
 
 void INFLASHFUN terminal_process_key_fansi(uint16_t key)
