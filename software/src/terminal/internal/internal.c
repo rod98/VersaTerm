@@ -72,6 +72,9 @@ void internal_terminal_clear_screen() {
 void INFLASHFUN internal_terminal_init() {
   internal_terminal_reset();
   internal_terminal_clear_screen();
+
+  for (int i = 0; i < framebuf_get_ncols(-1); i += 4)
+    gs->tabs[i] = 1;
 }
 
 void INFLASHFUN send_char(char c)

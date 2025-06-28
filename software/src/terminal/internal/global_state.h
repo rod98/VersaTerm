@@ -15,7 +15,4 @@ typedef struct {
     uint8_t saved_attr, saved_fg, saved_bg, saved_charset_G0, saved_charset_G1, *charset, charset_G0, charset_G1, tabs[255];
 } global_state;
 
-
-global_state create_global_state(void);
-
 #endif
