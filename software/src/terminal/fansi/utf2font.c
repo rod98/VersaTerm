@@ -5,94 +5,94 @@
 
 #define GR(x) GRAPH_ON, x, GRAPH_OFF
 
-font_char rus2font[] = {
-    { 144, false},
-    { 'E', false},
-    { ' ', false},
-    { 108, true },
-    { 238, false},
-    { 'S', false},
-    { 'I', false},
-    { 'I', false},
-    { 'J', false},
-    { ' ', false},
-    { ' ', false},
-    { 'h', false},
-    { 'K', false},
-    { 'N', false},
-    { 'Y', false},
-    { 249, false},
-    { 'A', false}, // finally A
-    { 156, false},
-    { 'B', false},
-    { 244, true },
-    { 234, false},
-    { 'E', false},
-    { '*', false},
-    { '3', false},
-    { 'I', false},
-    { 'I', false},  // Й :(
-    { 'K', false},
-    { 'L', false},
-    { 'M', false},
-    { 'H', false},
-    { 'O', false},
-    { 227, false},
-    { 'P', false},
-    { 'C', false},
-    { 'T', false},
-    { 'Y', false},
-    { 232, false},
-    { 'X', false},
-    { 211, false},
-    { '4', false},
-    { 'W', false},
-    { 'W', false},
-    { '"', false},
-    { 230, false},
-    {'\'', false},
-    { '}', false},
-    { 154, false},
-    { 142, false}, // Я
-    { 'a', false}, // a
-    { 235, false},
-    { 'v', false},
-    { 'r', false},
-    { 208, false},
-    { 'e', false},
-    { '*', false},
-    { '3', false},
-    { 'i', false},
-    { 141, false},
-    { 'k', false},
-    { 'l', false},
-    { 'm', false},
-    { 'h', false},
-    { 'o', false},
-    { 227, false},
-    { 'p', false},
-    { 'c', false},
-    { 't', false},
-    { 'y', false},
-    { 237, false},
-    { 'x', false},
-    { 191, false},
-    { '4', false},
-    { 'w', false},
-    { 'w', false}, // щ
-    { '"', false},
-    { 230, false},
-    {'\'', false},
-    { 238, false},
-    { 129, false},
-    { 132, false}, // я
-    { 138, false},
-    { 137, false}
+char rus2font[] = {
+    144,
+    'E',
+    ' ',
+    108,
+    238,
+    'S',
+    'I',
+    'I',
+    'J',
+    ' ',
+    ' ',
+    'h',
+    'K',
+    'N',
+    'Y',
+    249,
+    'A', // finally A
+    '6',
+    'B',
+    226,
+     17,
+    'E',
+     15, // Ж 
+    '3',
+     19,
+     19, // Й :(
+    'K',
+      6, // Л
+    'M',
+    'H',
+    'O',
+    239,
+    'P',
+    'C',
+    'T',
+    'Y',
+    232,
+    'X',
+     11,
+    '4',
+    'W',
+    'W',
+     31,
+     14,
+     31,
+    228,
+    172,
+      9, // Я
+    'a', // a
+    235, // б
+      5,
+    'r',
+     16,
+    'e',
+     23, // ж
+      0, // з
+     18,
+    127,
+    'k',
+      2, // л
+    'm',
+      1,
+    'o',
+    227,
+    'p',
+    'c',
+    't',
+    'y',
+    236,
+    'x',
+     10,
+     12,
+    'w',
+    'w', // щ
+     30,
+     13,
+     30,
+     29,
+    171,
+      8, // я
+    138,
+    137
 };
 
-font_char utf2font(uint32_t utf_char) {
-    font_char def_str = (font_char){254, false};
-    font_char def_rus = (font_char){ 96, true};
+char utf2font(uint32_t utf_char) {
+    char def_str = 254;
+    char def_rus = 29;
 
     // Russian
     if (utf_char >= 1024 && utf_char < 1106)

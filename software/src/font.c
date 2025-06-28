@@ -501,7 +501,9 @@ void INFLASHFUN font_init()
           memset(&(userFontInfo[i]), 0, sizeof(struct FontInfoStruct));
           userFontInfo[i].magic  = 0xA5968778;
           snprintf(userFontInfo[i].name, 32, "User %i", i+1);
-          memset(userFontInfo[i].graphicsCharMapping, ' ', 31);
+          // memset(userFontInfo[i].graphicsCharMapping, ' ', 31);
+          memcpy(userFontInfo[i].graphicsCharMapping, builtin_font_graphics_char_mapping, 31);
+
           modified = true;
         }
       else
