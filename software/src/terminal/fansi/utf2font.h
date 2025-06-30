@@ -3,6 +3,6 @@
 
 #include <stdint.h>
 
-char utf2font(uint32_t utf_char);
+int utf2font(uint32_t utf_char);
 
 #endif

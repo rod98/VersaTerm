@@ -51,7 +51,10 @@ void INFLASHFUN terminal_receive_char_fansi(char c) {
             utfs_sum  += (bit - 1) & uc;
 
             if (!utfs_left) {
-                print_char_vt(utf2font(utfs_sum));
+                int chr = utf2font(utfs_sum);
+                if (chr >= 0)
+                    print_char_vt((unsigned char)chr);
+
                 in_utf = false;
             }
         }
